@@ -48,12 +48,19 @@ jobs:
           }
           Write-Host "Portable doğrulandı: tek EXE ($(($files[0].Length/1MB).ToString('F1')) MB)"
 
+      - name: Move v1.0 tag to this commit (manual rebuild)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git tag -f v1.0 "${{ github.sha }}"
+          git push -f origin refs/tags/v1.0
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: ${{ github.ref_name }}
-          name: TLOUP1 ${{ github.ref_name }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && 'v1.0' || github.ref_name }}
+          name: TLOUP1 ${{ github.event_name == 'workflow_dispatch' && 'v1.0' || github.ref_name }}
           body_path: RELEASE_NOTES.md
           files: |
             portable/TLOUP1/TLOUP1.exe
