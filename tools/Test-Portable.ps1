@@ -1,4 +1,4 @@
-﻿param([string]$Folder = (Join-Path $PSScriptRoot '..\portable\TLOUP1'))
+param([string]$Folder = (Join-Path $PSScriptRoot '..\portable\TLOUP1'))
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @'
@@ -110,26 +110,13 @@ try {
         Select-Object -First 1
     if ($mainWindow) { $handle = $mainWindow.Handle }
     Write-Output 'STEP: ana pencere hazır'
-    # A themed startup hint is expected when no game is running.
-    $hint = [IntPtr]::Zero
+    # No startup dialog is expected: only the main window should be visible.
     if (-not (Get-Process tlou-i,tlou-i-l -ErrorAction SilentlyContinue)) {
-        Wait-Ui {
-            $null -ne (Get-AppWindows $app.Id | Where-Object { Test-HintWindow $_ $handle } |
-                Select-Object -First 1)
-        } $app
-        $hintWindow = Get-AppWindows $app.Id | Where-Object { Test-HintWindow $_ $handle } |
+        Start-Sleep -Milliseconds 800
+        $extra = Get-AppWindows $app.Id | Where-Object { Test-HintWindow $_ $handle } |
             Select-Object -First 1
-        if (-not $hintWindow) { throw 'Başlangıç uyarısı bulunamadı.' }
-        $hint = $hintWindow.Handle
-        Save-UiWindow $hint (Join-Path "$env:LOCALAPPDATA\Temp\opencode" 'TLOUP1-startup-hint.png')
-        $dismissDeadline = [DateTime]::UtcNow.AddSeconds(10)
-        while ([DateTime]::UtcNow -lt $dismissDeadline -and [PortableUi]::IsWindow($hint)) {
-            [void][PortableUi]::SendMessage($hint,0x0100,[IntPtr]13,[IntPtr]0) # Enter
-            [void][PortableUi]::SendMessage($hint,0x0010,[IntPtr]0,[IntPtr]0)  # WM_CLOSE
-            Start-Sleep -Milliseconds 100
-        }
-        if ([PortableUi]::IsWindow($hint)) { throw 'Başlangıç uyarısı kapanmadı.' }
-        Write-Output 'PASS: Temalı önce oyunu aç uyarısı onaylandı.'
+        if ($extra) { throw "Beklenmeyen başlangıç penceresi: $($extra.Title)" }
+        Write-Output 'PASS: Başlangıç uyarısı yok.'
     }
     $child = [PortableUi]::GetWindow($handle,5)
     $controlCount = 0
