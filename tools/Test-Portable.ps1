@@ -15,6 +15,7 @@ public static class PortableUi {
     [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint command);
     [DllImport("user32.dll")] public static extern IntPtr GetLastActivePopup(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
 }
 '@
 
@@ -76,6 +77,7 @@ try {
     [void]$app.WaitForInputIdle(10000)
     Wait-Ui { $app.Refresh(); $app.MainWindowHandle -ne 0 } $app
     $handle = $app.MainWindowHandle
+    Write-Output 'STEP: ana pencere hazır'
     # A themed startup hint is expected when no game is running.
     $hint = [IntPtr]::Zero
     if (-not (Get-Process tlou-i,tlou-i-l -ErrorAction SilentlyContinue)) {
@@ -86,8 +88,13 @@ try {
         $hint = [PortableUi]::GetLastActivePopup($handle)
         if ($hint -eq $handle -or $hint -eq [IntPtr]::Zero) { throw 'Başlangıç uyarısı bulunamadı.' }
         Save-UiWindow $hint (Join-Path "$env:LOCALAPPDATA\Temp\opencode" 'TLOUP1-startup-hint.png')
-        [void][PortableUi]::SendMessage($hint,0x0100,[IntPtr]13,[IntPtr]0) # Enter key
-        Wait-Ui { [PortableUi]::GetLastActivePopup($handle) -eq $handle } $app
+        $dismissDeadline = [DateTime]::UtcNow.AddSeconds(10)
+        while ([DateTime]::UtcNow -lt $dismissDeadline -and [PortableUi]::IsWindow($hint)) {
+            [void][PortableUi]::SendMessage($hint,0x0100,[IntPtr]13,[IntPtr]0) # Enter
+            [void][PortableUi]::SendMessage($hint,0x0010,[IntPtr]0,[IntPtr]0)  # WM_CLOSE
+            Start-Sleep -Milliseconds 100
+        }
+        if ([PortableUi]::IsWindow($hint)) { throw 'Başlangıç uyarısı kapanmadı.' }
         Write-Output 'PASS: Temalı önce oyunu aç uyarısı onaylandı.'
     }
     $child = [PortableUi]::GetWindow($handle,5)
@@ -97,6 +104,7 @@ try {
         $child = [PortableUi]::GetWindow($child,2)
     }
     if ($controlCount -ne 6) { throw "Beklenen iki özellikli düzen yerine $controlCount kontrol bulundu." }
+    Write-Output 'STEP: düzen doğrulandı'
 
     $preview = Join-Path "$env:LOCALAPPDATA\Temp\opencode" 'TLOUP1-portable-preview.png'
     Save-UiWindow $handle $preview
