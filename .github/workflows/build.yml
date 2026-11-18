@@ -1,0 +1,61 @@
+name: Build Portable
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      DOTNET_VERSION: '8.0.x'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore TLOUTrainer.sln
+
+      - name: Build Release
+        run: dotnet build TLOUTrainer.sln -c Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test TLOUTrainer.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Build Portable (uses project's Build-Portable.ps1)
+        shell: pwsh
+        run: |
+          # Build-Portable.ps1 creates a self-contained single-file bundle
+          # and places it at portable/TLOUP1/TLOUP1.exe
+          ./tools/Build-Portable.ps1
+
+      - name: Verify Portable
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem portable/TLOUP1 -Recurse -File
+          if ($files.Count -ne 1 -or $files.Name -ne 'TLOUP1.exe') {
+            throw "Portable klasöründe yalnızca TLOUP1.exe olmalı. Bulunan: $($files.Count) dosya"
+          }
+          Write-Host "Portable doğrulandı: tek EXE ($(($files[0].Length/1MB).ToString('F1')) MB)"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: TLOUP1 ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            portable/TLOUP1/TLOUP1.exe
+          draft: false
+          prerelease: false
