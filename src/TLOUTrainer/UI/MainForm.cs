@@ -74,7 +74,6 @@ public sealed class MainForm : Form
         _console = new ConsolePanel
         {
             Title = "ÇIKTI",
-            Source = "OTURUM / RAM",
             Location = new Point(22, 308),
             Size = new Size(456, 108)
         };
@@ -195,7 +194,7 @@ public sealed class MainForm : Form
         base.OnShown(e);
         _timer.Start();
         AppendLog("TLOUP1 başladı; oyun bekleniyor…");
-        TryAttach(showStartupHint: true);
+        TryAttach();
     }
 
     protected override void WndProc(ref Message m)
@@ -262,7 +261,7 @@ public sealed class MainForm : Form
         catch (Exception e) { Log.Write("Oyun öne alınamadı: " + e.Message); }
     }
 
-    private void TryAttach(bool showStartupHint = false)
+    private void TryAttach()
     {
         if (_session != null || _busy) return;
         Process? process;
@@ -277,13 +276,6 @@ public sealed class MainForm : Form
             if (!_cardError)
                 SetCard("Oyun bekleniyor",
                     "The Last of Us Part I açılınca otomatik bağlanır.", Theme.Warn, "SYS");
-            if (showStartupHint)
-                ThemeDialog.Info(this, "Önce oyunu aç",
-                    "Daha sorunsuz bir başlangıç için önce The Last of Us™ Part I'ı açıp " +
-                    "oynanış ekranına geçmeni, ardından programı açmanı öneriyoruz.\n\n" +
-                    "Şu anda oyun kapalı. Bu pencereyi onaylayıp oyunu açabilirsin; " +
-                    "program otomatik bağlanır. Programı yeniden başlatman zorunlu değildir.\n\n" +
-                    "Oyun beklenirken bellek analizi yapılmaz ve hileler uygulanmaz.");
             return;
         }
 
