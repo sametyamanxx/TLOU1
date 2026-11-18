@@ -20,7 +20,6 @@ public sealed class ConsolePanel : Panel
     private int _scroll;
 
     public string Title { get; set; } = "ÇIKTI";
-    public string Source { get; set; } = "OTURUM / RAM";
 
     public ConsolePanel()
     {
@@ -109,8 +108,6 @@ public sealed class ConsolePanel : Panel
 
         TextRenderer.DrawText(g, $"> {Title}", Theme.MonoTiny, new Rectangle(PadX, 5, 120, 13),
             Theme.AccentSoft, TextFormatFlags.NoPrefix);
-        TextRenderer.DrawText(g, Source, Theme.MonoTiny, new Rectangle(Width - 112, 5, 100, 13),
-            Theme.Dim, TextFormatFlags.Right | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
         Theme.Hairline(g, PadX, Width - PadX - 1, HeaderHeight, Theme.Border);
 
         var lines = BuildLines();
