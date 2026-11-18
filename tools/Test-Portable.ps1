@@ -16,6 +16,10 @@ public static class PortableUi {
     [DllImport("user32.dll")] public static extern IntPtr GetLastActivePopup(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+    public delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
 }
 '@
 
@@ -34,6 +38,31 @@ function Click-Control([IntPtr]$Handle) {
     # or relying on our window being in front of unrelated applications.
     [void][PortableUi]::SendMessage($Handle,0x0100,[IntPtr]32,[IntPtr]0)
     [void][PortableUi]::SendMessage($Handle,0x0101,[IntPtr]32,[IntPtr]0)
+}
+
+function Get-AppWindows([int]$ProcessId) {
+    $items = New-Object System.Collections.Generic.List[object]
+    $callback = [PortableUi+EnumProc]{
+        param([IntPtr]$h, [IntPtr]$l)
+        $owner = 0
+        [void][PortableUi]::GetWindowThreadProcessId($h, [ref]$owner)
+        if ($owner -eq $ProcessId) {
+            $text = New-Object System.Text.StringBuilder 512
+            [void][PortableUi]::GetWindowText($h, $text, 512)
+            $items.Add([pscustomobject]@{
+                Handle = $h; Title = $text.ToString(); Visible = [PortableUi]::IsWindowVisible($h)
+            })
+        }
+        return $true
+    }
+    [void][PortableUi]::EnumWindows($callback, [IntPtr]::Zero)
+    return $items
+}
+
+function Test-HintWindow($Window, [IntPtr]$MainHandle) {
+    $Window.Visible -and $Window.Handle -ne $MainHandle -and $Window.Title -ne '' -and
+        $Window.Title -notlike '.NET-Broadcast*' -and $Window.Title -notlike 'GDI+*' -and
+        $Window.Title -notlike 'Default IME' -and $Window.Title -notlike 'MSCTFIME*'
 }
 
 function Save-UiWindow([IntPtr]$Handle, [string]$Path) {
@@ -77,16 +106,21 @@ try {
     [void]$app.WaitForInputIdle(10000)
     Wait-Ui { $app.Refresh(); $app.MainWindowHandle -ne 0 } $app
     $handle = $app.MainWindowHandle
+    $mainWindow = Get-AppWindows $app.Id | Where-Object { $_.Visible -and $_.Title -like '*Last of Us*' } |
+        Select-Object -First 1
+    if ($mainWindow) { $handle = $mainWindow.Handle }
     Write-Output 'STEP: ana pencere hazır'
     # A themed startup hint is expected when no game is running.
     $hint = [IntPtr]::Zero
     if (-not (Get-Process tlou-i,tlou-i-l -ErrorAction SilentlyContinue)) {
         Wait-Ui {
-            $popup = [PortableUi]::GetLastActivePopup($handle)
-            $popup -ne $handle -and $popup -ne [IntPtr]::Zero
+            $null -ne (Get-AppWindows $app.Id | Where-Object { Test-HintWindow $_ $handle } |
+                Select-Object -First 1)
         } $app
-        $hint = [PortableUi]::GetLastActivePopup($handle)
-        if ($hint -eq $handle -or $hint -eq [IntPtr]::Zero) { throw 'Başlangıç uyarısı bulunamadı.' }
+        $hintWindow = Get-AppWindows $app.Id | Where-Object { Test-HintWindow $_ $handle } |
+            Select-Object -First 1
+        if (-not $hintWindow) { throw 'Başlangıç uyarısı bulunamadı.' }
+        $hint = $hintWindow.Handle
         Save-UiWindow $hint (Join-Path "$env:LOCALAPPDATA\Temp\opencode" 'TLOUP1-startup-hint.png')
         $dismissDeadline = [DateTime]::UtcNow.AddSeconds(10)
         while ([DateTime]::UtcNow -lt $dismissDeadline -and [PortableUi]::IsWindow($hint)) {
