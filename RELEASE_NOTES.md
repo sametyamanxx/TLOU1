@@ -26,7 +26,7 @@
 
 1. `TLOUP1.exe` indir (tek dosya, ~142 MB)
 2. Çift tıkla çalıştır
-3. Oyun açık değilse **temalı "Önce oyunu aç" önerisi** çıkar — **zorunlu değil**, oyunu sonra açıp programa dönersen otomatik bağlanır
+3. Oyun açık değilse program sessizce bekler; oyunu açınca otomatik bağlanır
 4. Oyunda F1 / F2 ile hileleri aç/kapat
 5. Insert ile paneli gizle/göster, × ile temiz çıkış
 
@@ -72,4 +72,4 @@ portable/TLOUP1/        # Dağıtım çıktısı (sadece TLOUP1.exe)
 
 ## 📝 Sürüm Geçmişi
 
-- **v1.0** — İlk sürüm: F1 (mermi + çakı + dövüş + sarf/üretim), F2 (sağlık), Insert gizle/göster, temalı başlangıç uyarısı, tek EXE portable, kurtarma koruması, açık kaynak.
+- **v1.0** — İlk sürüm: F1 (mermi + çakı + dövüş + sarf/üretim), F2 (sağlık), Insert gizle/göster, tek EXE portable, kurtarma koruması, açık kaynak.
